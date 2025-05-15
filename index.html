@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Leaflet Live Tracking</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    #map {
+      height: 100vh;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+  // Initialize the map
+  const map = L.map('map').setView([0, 0], 13);
+
+  // Add OpenStreetMap tiles
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© OpenStreetMap contributors'
+  }).addTo(map);
+
+  // Create a marker and accuracy circle
+  const marker = L.marker([0, 0]).addTo(map);
+  const accuracyCircle = L.circle([0, 0], {
+    radius: 0,
+    color: '#136AEC',
+    fillColor: '#136AEC',
+    fillOpacity: 0.2
+  }).addTo(map);
+
+  // Check for geolocation support
+  if ('geolocation' in navigator) {
+    // Start watching the user's position
+    navigator.geolocation.watchPosition(
+      position => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        const accuracy = position.coords.accuracy;
+
+        // Update marker and circle
+        marker.setLatLng([lat, lng]);
+        accuracyCircle.setLatLng([lat, lng]);
+        accuracyCircle.setRadius(accuracy);
+
+        // Center map on user's location
+        map.setView([lat, lng], 16);
+      },
+      error => {
+        console.error("Geolocation error:", error);
+        alert("Unable to retrieve your location.");
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 5000,
+        maximumAge: 0
+      }
+    );
+  } else {
+    alert("Geolocation is not supported by your browser.");
+  }
+</script>
+
+</body>
+</html>
