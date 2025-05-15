@@ -1,14 +1,14 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Leaflet Live Tracking</title>
+  <meta charset="utf-8" />
+  <title>Two Person Live Tracking (Dummy)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
     #map {
-      height: 100vh;
       width: 100%;
+      height: 100vh;
     }
   </style>
 </head>
@@ -19,7 +19,7 @@
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
   // Initialize the map
-  const map = L.map('map').setView([0, 0], 13);
+  const map = L.map('map').setView([12.9716, 77.5946], 15); // Centered on Bangalore
 
   // Add OpenStreetMap tiles
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -27,45 +27,47 @@
     attribution: '© OpenStreetMap contributors'
   }).addTo(map);
 
-  // Create a marker and accuracy circle
-  const marker = L.marker([0, 0]).addTo(map);
-  const accuracyCircle = L.circle([0, 0], {
-    radius: 0,
-    color: '#136AEC',
-    fillColor: '#136AEC',
-    fillOpacity: 0.2
+  // Create dummy starting locations
+  let person1 = { lat: 12.9716, lng: 77.5946 }; // Point A
+  let person2 = { lat: 12.9730, lng: 77.5955 }; // Point B
+
+  // Create markers and accuracy circles
+  const marker1 = L.marker([person1.lat, person1.lng], { title: "Person 1" }).addTo(map);
+  const circle1 = L.circle([person1.lat, person1.lng], {
+    radius: 10,
+    color: 'blue',
+    fillColor: 'blue',
+    fillOpacity: 0.3
   }).addTo(map);
 
-  // Check for geolocation support
-  if ('geolocation' in navigator) {
-    // Start watching the user's position
-    navigator.geolocation.watchPosition(
-      position => {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-        const accuracy = position.coords.accuracy;
+  const marker2 = L.marker([person2.lat, person2.lng], { title: "Person 2" }).addTo(map);
+  const circle2 = L.circle([person2.lat, person2.lng], {
+    radius: 10,
+    color: 'red',
+    fillColor: 'red',
+    fillOpacity: 0.3
+  }).addTo(map);
 
-        // Update marker and circle
-        marker.setLatLng([lat, lng]);
-        accuracyCircle.setLatLng([lat, lng]);
-        accuracyCircle.setRadius(accuracy);
-
-        // Center map on user's location
-        map.setView([lat, lng], 16);
-      },
-      error => {
-        console.error("Geolocation error:", error);
-        alert("Unable to retrieve your location.");
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 5000,
-        maximumAge: 0
-      }
-    );
-  } else {
-    alert("Geolocation is not supported by your browser.");
+  // Simulate movement
+  function moveDummyPerson(person, latChange, lngChange) {
+    person.lat += latChange;
+    person.lng += lngChange;
+    return person;
   }
+
+  setInterval(() => {
+    // Move both persons in different directions
+    person1 = moveDummyPerson(person1, 0.0001, 0.00005);
+    person2 = moveDummyPerson(person2, -0.00005, 0.0001);
+
+    // Update markers and circles
+    marker1.setLatLng([person1.lat, person1.lng]);
+    circle1.setLatLng([person1.lat, person1.lng]);
+
+    marker2.setLatLng([person2.lat, person2.lng]);
+    circle2.setLatLng([person2.lat, person2.lng]);
+  }, 500); // every 2 seconds
+
 </script>
 
 </body>
