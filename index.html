@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Two Person Live Tracking (Dummy)</title>
+  <title>Smooth Two-Person Tracking with Image Pins</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
@@ -10,29 +10,59 @@
       width: 100%;
       height: 100vh;
     }
+    .controls {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 1000;
+      background: white;
+      padding: 10px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+    }
+    button {
+      padding: 6px 12px;
+      margin: 5px;
+      font-size: 16px;
+    }
   </style>
 </head>
 <body>
+
+<div class="controls">
+  <button id="startRide">Start Ride</button>
+  <button id="stopRide">Stop Ride</button>
+</div>
 
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
-  // Initialize the map
-  const map = L.map('map').setView([12.9716, 77.5946], 15); // Centered on Bangalore
+  const map = L.map('map').setView([12.9716, 77.5946], 15);
 
-  // Add OpenStreetMap tiles
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '© OpenStreetMap contributors'
   }).addTo(map);
 
-  // Create dummy starting locations
-  let person1 = { lat: 12.9716, lng: 77.5946 }; // Point A
-  let person2 = { lat: 12.9730, lng: 77.5955 }; // Point B
+  let person1 = { lat: 12.9716, lng: 77.5946 };
+  let person2 = { lat: 12.9730, lng: 77.5955 };
 
-  // Create markers and accuracy circles
-  const marker1 = L.marker([person1.lat, person1.lng], { title: "Person 1" }).addTo(map);
+  const icon1 = L.icon({
+    iconUrl: 'https://cdn-icons-png.flaticon.com/512/149/149071.png',
+    iconSize: [40, 40],
+    iconAnchor: [20, 40],
+    popupAnchor: [0, -40]
+  });
+
+  const icon2 = L.icon({
+    iconUrl: 'https://cdn-icons-png.flaticon.com/512/4140/4140048.png',
+    iconSize: [40, 40],
+    iconAnchor: [20, 40],
+    popupAnchor: [0, -40]
+  });
+
+  const marker1 = L.marker([person1.lat, person1.lng], { icon: icon1, title: "Person 1" }).addTo(map);
   const circle1 = L.circle([person1.lat, person1.lng], {
     radius: 10,
     color: 'blue',
@@ -40,7 +70,7 @@
     fillOpacity: 0.3
   }).addTo(map);
 
-  const marker2 = L.marker([person2.lat, person2.lng], { title: "Person 2" }).addTo(map);
+  const marker2 = L.marker([person2.lat, person2.lng], { icon: icon2, title: "Person 2" }).addTo(map);
   const circle2 = L.circle([person2.lat, person2.lng], {
     radius: 10,
     color: 'red',
@@ -48,26 +78,77 @@
     fillOpacity: 0.3
   }).addTo(map);
 
-  // Simulate movement
-  function moveDummyPerson(person, latChange, lngChange) {
-    person.lat += latChange;
-    person.lng += lngChange;
-    return person;
+  let rideInterval;
+  let path1 = [ [person1.lat, person1.lng] ];
+  let path2 = [ [person2.lat, person2.lng] ];
+  let polyline1, polyline2;
+  let totalDistance1 = 0;
+  let totalDistance2 = 0;
+
+  function interpolate(start, end, t) {
+    return start + (end - start) * t;
   }
 
-  setInterval(() => {
-    // Move both persons in different directions
-    person1 = moveDummyPerson(person1, 0.0001, 0.00005);
-    person2 = moveDummyPerson(person2, -0.00005, 0.0001);
+  function animateMovement(marker, circle, startPos, endPos, duration = 1000) {
+    const startTime = performance.now();
+    function animate(currentTime) {
+      const elapsed = currentTime - startTime;
+      const t = Math.min(elapsed / duration, 1);
+      const lat = interpolate(startPos.lat, endPos.lat, t);
+      const lng = interpolate(startPos.lng, endPos.lng, t);
+      marker.setLatLng([lat, lng]);
+      circle.setLatLng([lat, lng]);
+      if (t < 1) requestAnimationFrame(animate);
+    }
+    requestAnimationFrame(animate);
+  }
 
-    // Update markers and circles
-    marker1.setLatLng([person1.lat, person1.lng]);
-    circle1.setLatLng([person1.lat, person1.lng]);
+  function getNextPosition(pos, latStep, lngStep) {
+    return {
+      lat: pos.lat + latStep,
+      lng: pos.lng + lngStep
+    };
+  }
 
-    marker2.setLatLng([person2.lat, person2.lng]);
-    circle2.setLatLng([person2.lat, person2.lng]);
-  }, 500); // every 2 seconds
+  function calculateDistance(latlng1, latlng2) {
+    return map.distance(latlng1, latlng2); // meters
+  }
 
+  document.getElementById('startRide').onclick = () => {
+    if (rideInterval) return; // prevent double start
+    rideInterval = setInterval(() => {
+      const newPos1 = getNextPosition(person1, 0.0001, 0.00005);
+      const newPos2 = getNextPosition(person2, -0.00005, 0.0001);
+
+      // Distance calculation
+      const dist1 = calculateDistance([person1.lat, person1.lng], [newPos1.lat, newPos1.lng]);
+      const dist2 = calculateDistance([person2.lat, person2.lng], [newPos2.lat, newPos2.lng]);
+      totalDistance1 += dist1;
+      totalDistance2 += dist2;
+
+      // Path
+      path1.push([newPos1.lat, newPos1.lng]);
+      path2.push([newPos2.lat, newPos2.lng]);
+
+      animateMovement(marker1, circle1, person1, newPos1);
+      animateMovement(marker2, circle2, person2, newPos2);
+
+      person1 = newPos1;
+      person2 = newPos2;
+
+      // Draw path lines
+      if (polyline1) map.removeLayer(polyline1);
+      if (polyline2) map.removeLayer(polyline2);
+      polyline1 = L.polyline(path1, { color: 'blue' }).addTo(map);
+      polyline2 = L.polyline(path2, { color: 'red' }).addTo(map);
+    }, 1000);
+  };
+
+  document.getElementById('stopRide').onclick = () => {
+    clearInterval(rideInterval);
+    rideInterval = null;
+    alert(`Person 1 traveled ${totalDistance1.toFixed(2)} meters.\nPerson 2 traveled ${totalDistance2.toFixed(2)} meters.`);
+  };
 </script>
 
 </body>
