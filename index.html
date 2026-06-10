@@ -1,10 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live Location Tracker - Google Maps</title>
+    <title>Live Location Tracker</title>
+    <!-- Leaflet CSS for the Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <!-- Google Fonts: Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -49,15 +50,8 @@
         }
 
         @keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .header {
@@ -120,9 +114,9 @@
             height: 500px;
             width: 100%;
             background: #E5E7EB;
-            z-index: 1;
+            z-index: 1; /* For leaflet controls */
         }
-
+        
         .status {
             margin-top: 16px;
             font-size: 14px;
@@ -136,107 +130,86 @@
             display: none;
             width: 22px;
             height: 22px;
-            border: 3px solid rgba(255, 255, 255, 0.3);
+            border: 3px solid rgba(255,255,255,0.3);
             border-radius: 50%;
             border-top-color: white;
             animation: spin 1s linear infinite;
         }
 
         @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Customize Leaflet Popup */
+        .leaflet-popup-content-wrapper {
+            border-radius: 12px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        .leaflet-popup-content {
+            font-family: 'Inter', sans-serif;
+            font-weight: 500;
+            font-size: 14px;
+            color: var(--text-main);
+            margin: 12px 16px;
+        }
+        
+        /* Pulse Animation for Marker */
+        .pulse-marker {
+            background: rgba(79, 70, 229, 0.5);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 15px rgba(79, 70, 229, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(79, 70, 229, 0); }
         }
     </style>
 </head>
-
 <body>
 
     <div class="container">
         <div class="header">
             <h1>Where am I?</h1>
-            <p>Click the button below to discover your exact current location and view it pinned on Google Maps.</p>
-
+            <p>Click the button below to discover your exact current location and view it pinned on the interactive map.</p>
+            
             <button class="btn" id="find-me-btn">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
                 </svg>
                 <span id="btn-text">Locate Me</span>
                 <div class="loading-spinner" id="loading-spinner"></div>
             </button>
-
+            
             <div class="status" id="status-msg"></div>
-            <div style="font-size: 12px; color: var(--text-muted); margin-top: 20px; line-height: 1.4; max-width: 400px; margin-left: auto; margin-right: auto; text-align: left;">
-                <span style="display: block; font-weight: 600; margin-bottom: 4px;">💡 Why is my accuracy 500m?</span>
-                Desktop computers lack built-in GPS chips, so they estimate your location using your Wi-Fi or IP address. For pinpoint accuracy (5m - 10m), open this page on a mobile phone!
-            </div>
         </div>
         <div id="map"></div>
     </div>
 
-    <!-- IMPORTANT: Replace 'YOUR_API_KEY' with your actual Google Maps API Key -->
-    <script async defer
-        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAT-yr1BTSKwXaclsyAHJYUHDb21APtYG8&callback=initMap"></script>
-
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
     <script>
-        let map;
-        let marker;
-        let accuracyCircle;
-
         // Initialize map centered roughly on the world
-        function initMap() {
-            map = new google.maps.Map(document.getElementById("map"), {
-                center: { lat: 20, lng: 0 },
-                zoom: 2,
-                mapTypeControl: false,
-                streetViewControl: false,
-                styles: [ // Optional: Add a custom style to make it look premium
-                    {
-                        "featureType": "poi",
-                        "elementType": "labels.text.fill",
-                        "stylers": [{ "color": "#747474" }, { "lightness": "23" }]
-                    },
-                    {
-                        "featureType": "poi.attraction",
-                        "elementType": "geometry.fill",
-                        "stylers": [{ "color": "#f38eb0" }]
-                    },
-                    {
-                        "featureType": "poi.government",
-                        "elementType": "geometry.fill",
-                        "stylers": [{ "color": "#ced7db" }]
-                    },
-                    {
-                        "featureType": "poi.medical",
-                        "elementType": "geometry.fill",
-                        "stylers": [{ "color": "#ffa5a8" }]
-                    },
-                    {
-                        "featureType": "poi.park",
-                        "elementType": "geometry.fill",
-                        "stylers": [{ "color": "#c7e5c8" }]
-                    },
-                    {
-                        "featureType": "poi.place_of_worship",
-                        "elementType": "geometry.fill",
-                        "stylers": [{ "color": "#d6cbc7" }]
-                    },
-                    {
-                        "featureType": "poi.school",
-                        "elementType": "geometry.fill",
-                        "stylers": [{ "color": "#c4c9e8" }]
-                    },
-                    {
-                        "featureType": "poi.sports_complex",
-                        "elementType": "geometry.fill",
-                        "stylers": [{ "color": "#b1eaf1" }]
-                    }
-                ]
-            });
-        }
+        const map = L.map('map', {
+            zoomControl: false // We'll add it back to position it nicely
+        }).setView([20, 0], 2);
+
+        // Add Zoom control to bottom right
+        L.control.zoom({
+            position: 'bottomright'
+        }).addTo(map);
+
+        // Add vibrant OpenStreetMap tiles
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            maxZoom: 20,
+            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>'
+        }).addTo(map);
+
+        let currentMarker = null;
+        let currentCircle = null;
 
         const btn = document.getElementById('find-me-btn');
         const btnText = document.getElementById('btn-text');
@@ -263,59 +236,51 @@
                     const lat = position.coords.latitude;
                     const lng = position.coords.longitude;
                     const accuracy = position.coords.accuracy;
-                    const pos = { lat: lat, lng: lng };
 
                     // Reset button state
                     btn.style.pointerEvents = 'auto';
                     btnText.style.display = 'block';
                     btnIcon.style.display = 'block';
                     spinner.style.display = 'none';
-
+                    
                     statusMsg.innerHTML = `Location successfully found! <span style="opacity: 0.7; font-size: 12px; margin-left: 5px;">(Accuracy: ${Math.round(accuracy)}m)</span>`;
                     statusMsg.style.color = '#10B981'; // Green
 
-                    // Ensure map is initialized (in case API key is missing, this handles gracefully)
-                    if (!map) {
-                        showError("Google Maps failed to load. Please check your API key.");
-                        return;
-                    }
-
                     // Remove existing marker/circle if they exist
-                    if (marker) marker.setMap(null);
-                    if (accuracyCircle) accuracyCircle.setMap(null);
+                    if (currentMarker) map.removeLayer(currentMarker);
+                    if (currentCircle) map.removeLayer(currentCircle);
 
-                    // Add new marker
-                    marker = new google.maps.Marker({
-                        position: pos,
-                        map: map,
-                        animation: google.maps.Animation.DROP,
-                        title: "You are here!"
+                    // Custom Leaflet Icon
+                    const customIcon = L.icon({
+                        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-violet.png',
+                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                        iconSize: [25, 41],
+                        iconAnchor: [12, 41],
+                        popupAnchor: [1, -34],
+                        shadowSize: [41, 41]
                     });
 
-                    // Add accuracy circle
-                    accuracyCircle = new google.maps.Circle({
-                        strokeColor: "#4F46E5",
-                        strokeOpacity: 0.8,
-                        strokeWeight: 2,
-                        fillColor: "#4F46E5",
-                        fillOpacity: 0.15,
-                        map: map,
-                        center: pos,
-                        radius: accuracy,
-                    });
+                    // Add new marker and accuracy circle
+                    currentMarker = L.marker([lat, lng], { icon: customIcon }).addTo(map);
+                    
+                    currentCircle = L.circle([lat, lng], { 
+                        radius: accuracy, 
+                        color: 'var(--primary)', 
+                        fillColor: 'var(--primary)', 
+                        fillOpacity: 0.1,
+                        weight: 1
+                    }).addTo(map);
 
                     // Smoothly animate to the new location
-                    map.panTo(pos);
-                    map.setZoom(16);
-
-                    // Add popup to marker
-                    const infowindow = new google.maps.InfoWindow({
-                        content: "<div style='font-family: Inter, sans-serif; font-size: 14px; font-weight: 500; color: #111827'>📍 <b>You are right here!</b></div>",
+                    map.flyTo([lat, lng], 16, {
+                        animate: true,
+                        duration: 1.5 // in seconds
                     });
-
+                    
+                    // Add popup to marker
                     setTimeout(() => {
-                        infowindow.open(map, marker);
-                    }, 500);
+                        currentMarker.bindPopup("📍 <b>You are right here!</b>").openPopup();
+                    }, 1500); // Wait for flyTo to finish
                 },
                 (error) => {
                     // Reset button state
@@ -324,7 +289,7 @@
                     btnIcon.style.display = 'block';
                     spinner.style.display = 'none';
 
-                    switch (error.code) {
+                    switch(error.code) {
                         case error.PERMISSION_DENIED:
                             showError("Location access denied. Please enable permissions in your browser.");
                             break;
@@ -353,5 +318,4 @@
         }
     </script>
 </body>
-
 </html>
