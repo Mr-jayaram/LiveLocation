@@ -1,22 +1,28 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live Location Tracker</title>
-    <!-- Leaflet CSS for the Map -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Navios Map App</title>
+    <!-- Leaflet & Plugins -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js"></script>
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <!-- Google Fonts: Inter -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary: #4F46E5;
-            --primary-hover: #4338CA;
-            --bg: #F9FAFB;
-            --card-bg: #FFFFFF;
-            --text-main: #111827;
-            --text-muted: #6B7280;
-            --border: #E5E7EB;
+            --primary: #5266F5;
+            /* Blue */
+            --primary-gradient: linear-gradient(135deg, #7A90FA 0%, #5266F5 100%);
+            --purple-gradient: linear-gradient(135deg, #7C5BFF 0%, #B85CF5 100%);
+            --bg: #F2F4F8;
+            --text-main: #1C1F2E;
+            --text-muted: #8E94A8;
+            --white: #FFFFFF;
         }
 
         * {
@@ -24,298 +30,747 @@
             padding: 0;
             box-sizing: border-box;
             font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
         }
 
         body {
             background-color: var(--bg);
             color: var(--text-main);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            padding: 20px;
-        }
-
-        .container {
-            background: var(--card-bg);
-            border-radius: 24px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
-            width: 100%;
-            max-width: 900px;
             overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            border: 1px solid var(--border);
-            animation: slideUp 0.6s ease-out;
-        }
-
-        @keyframes slideUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .header {
-            padding: 40px;
-            text-align: center;
-            border-bottom: 1px solid var(--border);
+            /* App view */
+            width: 100vw;
+            height: 100vh;
             position: relative;
         }
 
-        h1 {
-            font-size: 28px;
+        /* ---------------- MAP ---------------- */
+        #map {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+
+        /* Hide leaflet default controls to match app design */
+        .leaflet-control-zoom,
+        .leaflet-control-attribution {
+            display: none !important;
+        }
+
+        /* ---------------- TOP FLOATING UI ---------------- */
+        .top-ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 10;
+            background: linear-gradient(to bottom, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0.85) 60%, rgba(255, 255, 255, 0) 100%);
+            padding: 20px 20px 20px 20px;
+            /* Safe area top */
+            pointer-events: none;
+            /* Let clicks pass through background */
+        }
+
+        .top-ui>* {
+            pointer-events: auto;
+            /* Enable clicks on children */
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 24px;
             font-weight: 700;
-            margin-bottom: 12px;
             color: var(--text-main);
-            letter-spacing: -0.5px;
         }
 
-        p {
+        .logo i {
+            color: #7C5BFF;
+            font-size: 28px;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            background: white;
+            border-radius: 30px;
+            padding: 6px 6px 6px 14px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            gap: 15px;
+        }
+
+        .header-actions i {
+            font-size: 22px;
             color: var(--text-muted);
-            font-size: 16px;
-            margin-bottom: 24px;
-            max-width: 500px;
-            margin-left: auto;
-            margin-right: auto;
-            line-height: 1.5;
+            cursor: pointer;
         }
 
-        .btn {
+        .bell-icon {
+            position: relative;
+        }
+
+        .bell-dot {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            width: 8px;
+            height: 8px;
+            background: #FF4D4D;
+            border-radius: 50%;
+            border: 2px solid white;
+        }
+
+        .profile-pic {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        /* Tabs */
+        .tabs-container {
+            display: flex;
+            background: white;
+            border-radius: 30px;
+            padding: 5px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            margin-bottom: 15px;
+            align-items: center;
+        }
+
+        .tabs {
+            display: flex;
+            flex: 1;
+        }
+
+        .tab {
+            flex: 1;
+            text-align: center;
+            padding: 10px 0;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-muted);
+            border-radius: 25px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .tab.active {
             background: var(--primary);
             color: white;
-            border: none;
-            padding: 14px 28px;
+            box-shadow: 0 4px 10px rgba(82, 102, 245, 0.3);
+        }
+
+        .filter-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 15px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-muted);
+            border-left: 1px solid #EAEAEA;
+            margin-left: 5px;
+        }
+
+        /* Tags */
+        .tags {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding-bottom: 5px;
+            scrollbar-width: none;
+            /* Firefox */
+        }
+
+        .tags::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* Chrome */
+
+        .tag {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            color: white;
+            white-space: nowrap;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .tag-all {
+            background: #A0C3FF;
+            color: white;
+        }
+
+        .tag-purple {
+            background: #7C5BFF;
+        }
+
+        .tag-pink {
+            background: #E07AEC;
+        }
+
+        .tag-red {
+            background: #FF7070;
+        }
+
+        .tag-yellow {
+            background: #FFBA49;
+        }
+
+        .tag-green {
+            background: #6CE07A;
+        }
+
+        /* ---------------- BOTTOM SHEET ---------------- */
+        .bottom-sheet {
+            position: absolute;
+            bottom: 95px;
+            /* Above nav bar */
+            left: 20px;
+            right: 20px;
+            background: white;
+            border-radius: 24px;
+            padding: 20px;
+            z-index: 10;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            pointer-events: auto;
+            animation: slideUpBottom 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes slideUpBottom {
+            from {
+                transform: translateY(100px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .event-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .event-date {
+            border: 1px solid #EAEAEA;
             border-radius: 12px;
+            padding: 10px;
+            text-align: center;
+            min-width: 55px;
+        }
+
+        .event-date .day {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--primary);
+            line-height: 1;
+        }
+
+        .event-date .month {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-top: 4px;
+            text-transform: uppercase;
+        }
+
+        .event-info {
+            flex: 1;
+        }
+
+        .event-info h3 {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 4px;
+        }
+
+        .event-info .time {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .event-info .time span {
+            color: var(--text-main);
+        }
+
+        .event-location {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .event-location i {
+            color: var(--primary);
             font-size: 16px;
+        }
+
+        .event-image {
+            width: 100%;
+            height: 120px;
+            border-radius: 16px;
+            background-image: url('https://images.unsplash.com/photo-1533580556209-661cc2bd0b6d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80');
+            background-size: cover;
+            background-position: center;
+            position: relative;
+            margin-bottom: 15px;
+        }
+
+        .view-btn {
+            position: absolute;
+            bottom: 15px;
+            right: 15px;
+            background: var(--purple-gradient);
+            color: white;
+            padding: 8px 24px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            border: none;
+            box-shadow: 0 6px 15px rgba(124, 91, 255, 0.4);
+            cursor: pointer;
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .action-btn {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            background: white;
+            border: 1px solid #EAEAEA;
+            padding: 12px;
+            border-radius: 16px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .action-btn i {
+            font-size: 18px;
+            color: var(--primary);
+        }
+
+        /* ---------------- BOTTOM NAV ---------------- */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 80px;
+            background: white;
+            border-radius: 30px 30px 0 0;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 0 10px 10px 10px;
+            z-index: 20;
+            box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.05);
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: #C0C5D4;
+            font-size: 11px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2), 0 2px 4px -1px rgba(79, 70, 229, 0.1);
+            width: 60px;
         }
 
-        .btn:hover {
-            background: var(--primary-hover);
-            transform: translateY(-2px);
-            box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.3), 0 4px 6px -2px rgba(79, 70, 229, 0.15);
+        .nav-item i {
+            font-size: 24px;
         }
 
-        .btn:active {
-            transform: translateY(0);
+        .nav-item.active {
+            color: var(--text-main);
         }
 
-        .btn svg {
-            width: 22px;
-            height: 22px;
+        .nav-item.active i {
+            color: var(--primary);
         }
 
-        #map {
-            height: 500px;
-            width: 100%;
-            background: #E5E7EB;
-            z-index: 1; /* For leaflet controls */
-        }
-        
-        .status {
-            margin-top: 16px;
-            font-size: 14px;
-            font-weight: 500;
-            color: var(--text-muted);
-            min-height: 20px;
-            transition: color 0.3s ease;
+        .fab-container {
+            position: relative;
+            top: -25px;
+            width: 60px;
         }
 
-        .loading-spinner {
-            display: none;
-            width: 22px;
-            height: 22px;
-            border: 3px solid rgba(255,255,255,0.3);
+        .fab {
+            width: 60px;
+            height: 60px;
+            background: var(--purple-gradient);
             border-radius: 50%;
-            border-top-color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 28px;
+            box-shadow: 0 8px 20px rgba(124, 91, 255, 0.4);
+            border: 5px solid white;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .fab:active {
+            transform: scale(0.95);
+        }
+
+        /* ---------------- CUSTOM LEAFLET PINS ---------------- */
+        .custom-pin-container {
+            width: 48px;
+            height: 56px;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            pointer-events: none;
+        }
+
+        .teardrop {
+            width: 40px;
+            height: 40px;
+            background: white;
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg);
+            position: absolute;
+            top: 0;
+            box-shadow: -2px 4px 8px rgba(0, 0, 0, 0.15);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .teardrop::after {
+            content: '';
+            position: absolute;
+            width: 14px;
+            height: 4px;
+            background: rgba(82, 102, 245, 0.4);
+            border-radius: 50%;
+            bottom: -10px;
+            left: 13px;
+            transform: rotate(45deg);
+        }
+
+        .inner-circle {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            transform: rotate(45deg);
+            /* Counter rotate */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 16px;
+            overflow: hidden;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .inner-circle img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .bg-purple {
+            background: #7C5BFF;
+        }
+
+        .bg-green {
+            background: #88E256;
+        }
+
+        .bg-image {
+            background: white;
+        }
+
+        /* "Open in Google Maps" floating pill */
+        .open-maps-pill {
+            position: absolute;
+            bottom: 300px;
+            right: 20px;
+            background: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-main);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            z-index: 10;
+            pointer-events: auto;
+        }
+
+        .open-maps-pill img {
+            width: 14px;
+        }
+
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.8);
+            z-index: 9999;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(5px);
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--primary);
+            border-top-color: transparent;
+            border-radius: 50%;
             animation: spin 1s linear infinite;
         }
 
         @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        /* Customize Leaflet Popup */
-        .leaflet-popup-content-wrapper {
-            border-radius: 12px;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-        }
-        .leaflet-popup-content {
-            font-family: 'Inter', sans-serif;
-            font-weight: 500;
-            font-size: 14px;
-            color: var(--text-main);
-            margin: 12px 16px;
-        }
-        
-        /* Pulse Animation for Marker */
-        .pulse-marker {
-            background: rgba(79, 70, 229, 0.5);
-            border-radius: 50%;
-            animation: pulse 2s infinite;
-        }
-        
-        @keyframes pulse {
-            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.7); }
-            70% { transform: scale(1); box-shadow: 0 0 0 15px rgba(79, 70, 229, 0); }
-            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(79, 70, 229, 0); }
+            100% {
+                transform: rotate(360deg);
+            }
         }
     </style>
 </head>
+
 <body>
 
-    <div class="container">
+    <!-- Map Background -->
+    <div id="map"></div>
+
+    <!-- Top UI Overlay -->
+    <div class="top-ui">
+        <!-- Header -->
         <div class="header">
-            <h1>Where am I?</h1>
-            <p>Click the button below to discover your exact current location and view it pinned on the interactive map.</p>
-            
-            <button class="btn" id="find-me-btn">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                </svg>
-                <span id="btn-text">Locate Me</span>
-                <div class="loading-spinner" id="loading-spinner"></div>
-            </button>
-            
-            <div class="status" id="status-msg"></div>
+            <div class="logo">
+                <i class="ph-fill ph-map-pin"></i>
+                Navios
+            </div>
+            <div class="header-actions">
+                <i class="ph ph-magnifying-glass"></i>
+                <div class="locate-icon" id="top-locate-btn" style="cursor: pointer; position: relative; display: flex; align-items: center;">
+                    <i class="ph ph-crosshair"></i>
+                </div>
+                <img src="https://i.pravatar.cc/100?img=68" class="profile-pic" alt="Profile">
+            </div>
         </div>
-        <div id="map"></div>
+
+        <!-- Tabs -->
+        <div class="tabs-container">
+            <div class="tabs">
+                <div class="tab active">Today</div>
+                <div class="tab">Soon</div>
+                <div class="tab">Finished</div>
+            </div>
+            <div class="filter-btn">
+                <i class="ph ph-faders"></i> Filters
+            </div>
+        </div>
+
+        <!-- Tags -->
+        <div class="tags">
+            <div class="tag tag-all"><i class="ph ph-arrow-counter-clockwise"></i> All</div>
+            <div class="tag tag-purple"><i class="ph ph-asterisk"></i> 祭</div>
+            <div class="tag tag-pink"><i class="ph ph-tag"></i> 縛</div>
+            <div class="tag tag-red"><i class="ph ph-tag"></i> 工</div>
+            <div class="tag tag-yellow"><i class="ph ph-map-pin-line"></i> 稼</div>
+            <div class="tag tag-green"><i class="ph ph-calendar-blank"></i> 桜</div>
+        </div>
     </div>
 
-    <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-    
+
+
+
+    <!-- Bottom Navigation -->
+    <div class="bottom-nav">
+        <div class="nav-item active">
+            <i class="ph-fill ph-map-pin"></i>
+            Map
+        </div>
+        <div class="nav-item">
+            <i class="ph-fill ph-calendar-check"></i>
+            Discover
+        </div>
+
+        <div class="fab-container">
+            <div class="fab" id="locate-me-btn">
+                <i class="ph ph-plus"></i>
+            </div>
+        </div>
+
+        <div class="nav-item">
+            <i class="ph-fill ph-users"></i>
+            Saved
+        </div>
+        <div class="nav-item">
+            <i class="ph-fill ph-chat-circle"></i>
+            Profile
+        </div>
+    </div>
+
+    <div id="loading-overlay">
+        <div class="spinner"></div>
+    </div>
+
     <script>
-        // Initialize map centered roughly on the world
+        // Initialize Map
         const map = L.map('map', {
-            zoomControl: false // We'll add it back to position it nicely
-        }).setView([20, 0], 2);
+            zoomControl: false,
+            rotate: true,
+            touchRotate: true,
+            shiftKeyRotate: true
+        }).setView([35.3060, 139.5210], 15); // Kamakura, Japan roughly
 
-        // Add Zoom control to bottom right
-        L.control.zoom({
-            position: 'bottomright'
-        }).addTo(map);
-
-        // Add vibrant OpenStreetMap tiles
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+        // Use Google Hybrid Satellite view
+        L.tileLayer('http://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', {
             maxZoom: 20,
-            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>'
+            subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+            attribution: ''
         }).addTo(map);
 
+        // Helper function to create custom HTML markers
+        function createCustomIcon(innerHtml, bgColorClass) {
+            return L.divIcon({
+                className: 'custom-pin-wrapper',
+                html: `
+                    <div class="custom-pin-container">
+                        <div class="teardrop">
+                            <div class="inner-circle ${bgColorClass}">
+                                ${innerHtml}
+                            </div>
+                        </div>
+                    </div>
+                `,
+                iconSize: [48, 56],
+                iconAnchor: [24, 56]
+            });
+        }
+
+        // Add dummy markers matching the screenshot
+
+        // 1. Purple Home Marker
+        L.marker([35.3075, 139.5180], {
+            icon: createCustomIcon('<i class="ph-fill ph-house"></i>', 'bg-purple')
+        }).addTo(map);
+
+        // 2. Green Wrench Marker
+        L.marker([35.3065, 139.5240], {
+            icon: createCustomIcon('<i class="ph-fill ph-wrench"></i>', 'bg-green')
+        }).addTo(map);
+
+        // 3. Image Marker
+        L.marker([35.3045, 139.5190], {
+            icon: createCustomIcon('<img src="https://images.unsplash.com/photo-1533580556209-661cc2bd0b6d?ixlib=rb-4.0.3&auto=format&fit=crop&w=100&q=80" alt="event">', 'bg-image')
+        }).addTo(map);
+
+
+        // Re-implement Locate Me functionality on the FAB
+        const locateBtn = document.getElementById('locate-me-btn');
+        const topLocateBtn = document.getElementById('top-locate-btn');
+        const overlay = document.getElementById('loading-overlay');
         let currentMarker = null;
         let currentCircle = null;
 
-        const btn = document.getElementById('find-me-btn');
-        const btnText = document.getElementById('btn-text');
-        const spinner = document.getElementById('loading-spinner');
-        const statusMsg = document.getElementById('status-msg');
-        const btnIcon = btn.querySelector('svg');
-
-        btn.addEventListener('click', () => {
+        const locateUser = () => {
             if (!navigator.geolocation) {
-                showError('Geolocation is not supported by your browser.');
+                alert('Geolocation is not supported by your browser.');
                 return;
             }
 
-            // Set loading state
-            btn.style.pointerEvents = 'none';
-            btnText.style.display = 'none';
-            btnIcon.style.display = 'none';
-            spinner.style.display = 'block';
-            statusMsg.textContent = 'Acquiring GPS coordinates...';
-            statusMsg.style.color = 'var(--text-muted)';
+            overlay.style.display = 'flex';
 
             navigator.geolocation.getCurrentPosition(
                 (position) => {
+                    overlay.style.display = 'none';
                     const lat = position.coords.latitude;
                     const lng = position.coords.longitude;
                     const accuracy = position.coords.accuracy;
 
-                    // Reset button state
-                    btn.style.pointerEvents = 'auto';
-                    btnText.style.display = 'block';
-                    btnIcon.style.display = 'block';
-                    spinner.style.display = 'none';
-                    
-                    statusMsg.innerHTML = `Location successfully found! <span style="opacity: 0.7; font-size: 12px; margin-left: 5px;">(Accuracy: ${Math.round(accuracy)}m)</span>`;
-                    statusMsg.style.color = '#10B981'; // Green
-
-                    // Remove existing marker/circle if they exist
                     if (currentMarker) map.removeLayer(currentMarker);
                     if (currentCircle) map.removeLayer(currentCircle);
 
-                    // Custom Leaflet Icon
-                    const customIcon = L.icon({
-                        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-violet.png',
-                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-                        iconSize: [25, 41],
-                        iconAnchor: [12, 41],
-                        popupAnchor: [1, -34],
-                        shadowSize: [41, 41]
-                    });
+                    // Add blue dot for user
+                    currentMarker = L.circleMarker([lat, lng], {
+                        radius: 8,
+                        fillColor: '#5266F5',
+                        color: 'white',
+                        weight: 3,
+                        opacity: 1,
+                        fillOpacity: 1
+                    }).addTo(map);
 
-                    // Add new marker and accuracy circle
-                    currentMarker = L.marker([lat, lng], { icon: customIcon }).addTo(map);
-                    
-                    currentCircle = L.circle([lat, lng], { 
-                        radius: accuracy, 
-                        color: 'var(--primary)', 
-                        fillColor: 'var(--primary)', 
-                        fillOpacity: 0.1,
+                    currentCircle = L.circle([lat, lng], {
+                        radius: accuracy,
+                        color: '#5266F5',
+                        fillColor: '#5266F5',
+                        fillOpacity: 0.15,
                         weight: 1
                     }).addTo(map);
 
-                    // Smoothly animate to the new location
-                    map.flyTo([lat, lng], 16, {
-                        animate: true,
-                        duration: 1.5 // in seconds
-                    });
-                    
-                    // Add popup to marker
-                    setTimeout(() => {
-                        currentMarker.bindPopup("📍 <b>You are right here!</b>").openPopup();
-                    }, 1500); // Wait for flyTo to finish
+                    map.flyTo([lat, lng], 16, { animate: true, duration: 1.5 });
                 },
                 (error) => {
-                    // Reset button state
-                    btn.style.pointerEvents = 'auto';
-                    btnText.style.display = 'block';
-                    btnIcon.style.display = 'block';
-                    spinner.style.display = 'none';
-
-                    switch(error.code) {
-                        case error.PERMISSION_DENIED:
-                            showError("Location access denied. Please enable permissions in your browser.");
-                            break;
-                        case error.POSITION_UNAVAILABLE:
-                            showError("Location information is currently unavailable.");
-                            break;
-                        case error.TIMEOUT:
-                            showError("The request to get your location timed out.");
-                            break;
-                        case error.UNKNOWN_ERROR:
-                            showError("An unknown error occurred while trying to find you.");
-                            break;
-                    }
+                    overlay.style.display = 'none';
+                    alert("Could not get location. Ensure permissions are granted.");
                 },
-                {
-                    enableHighAccuracy: true,
-                    timeout: 10000,
-                    maximumAge: 0
-                }
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
             );
+        };
+
+        locateBtn.addEventListener('click', locateUser);
+        topLocateBtn.addEventListener('click', locateUser);
+
+        // Manual drop pin interaction
+        let manualMarker = null;
+        map.on('click', function (e) {
+            if (manualMarker) map.removeLayer(manualMarker);
+
+            // Red icon for manual pins
+            const redIcon = createCustomIcon('<i class="ph-fill ph-map-pin"></i>', 'bg-purple');
+
+            manualMarker = L.marker([e.latlng.lat, e.latlng.lng], { icon: redIcon }).addTo(map);
         });
 
-        function showError(msg) {
-            statusMsg.textContent = msg;
-            statusMsg.style.color = '#EF4444'; // Red
-        }
     </script>
 </body>
+
 </html>
