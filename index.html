@@ -1,155 +1,357 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
 <head>
-  <meta charset="utf-8" />
-  <title>Smooth Two-Person Tracking with Image Pins</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-  <style>
-    #map {
-      width: 100%;
-      height: 100vh;
-    }
-    .controls {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      z-index: 1000;
-      background: white;
-      padding: 10px;
-      border-radius: 8px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.2);
-    }
-    button {
-      padding: 6px 12px;
-      margin: 5px;
-      font-size: 16px;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Location Tracker - Google Maps</title>
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4F46E5;
+            --primary-hover: #4338CA;
+            --bg: #F9FAFB;
+            --card-bg: #FFFFFF;
+            --text-main: #111827;
+            --text-muted: #6B7280;
+            --border: #E5E7EB;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background: var(--card-bg);
+            border-radius: 24px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+            width: 100%;
+            max-width: 900px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid var(--border);
+            animation: slideUp 0.6s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .header {
+            padding: 40px;
+            text-align: center;
+            border-bottom: 1px solid var(--border);
+            position: relative;
+        }
+
+        h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: var(--text-main);
+            letter-spacing: -0.5px;
+        }
+
+        p {
+            color: var(--text-muted);
+            font-size: 16px;
+            margin-bottom: 24px;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+            line-height: 1.5;
+        }
+
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2), 0 2px 4px -1px rgba(79, 70, 229, 0.1);
+        }
+
+        .btn:hover {
+            background: var(--primary-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.3), 0 4px 6px -2px rgba(79, 70, 229, 0.15);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn svg {
+            width: 22px;
+            height: 22px;
+        }
+
+        #map {
+            height: 500px;
+            width: 100%;
+            background: #E5E7EB;
+            z-index: 1;
+        }
+
+        .status {
+            margin-top: 16px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-muted);
+            min-height: 20px;
+            transition: color 0.3s ease;
+        }
+
+        .loading-spinner {
+            display: none;
+            width: 22px;
+            height: 22px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
 </head>
+
 <body>
 
-<div class="controls">
-  <button id="startRide">Start Ride</button>
-  <button id="stopRide">Stop Ride</button>
-</div>
+    <div class="container">
+        <div class="header">
+            <h1>Where am I?</h1>
+            <p>Click the button below to discover your exact current location and view it pinned on Google Maps.</p>
 
-<div id="map"></div>
+            <button class="btn" id="find-me-btn">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                </svg>
+                <span id="btn-text">Locate Me</span>
+                <div class="loading-spinner" id="loading-spinner"></div>
+            </button>
 
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-<script>
-  const map = L.map('map').setView([12.9716, 77.5946], 15);
+            <div class="status" id="status-msg"></div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 20px; line-height: 1.4; max-width: 400px; margin-left: auto; margin-right: auto; text-align: left;">
+                <span style="display: block; font-weight: 600; margin-bottom: 4px;">💡 Why is my accuracy 500m?</span>
+                Desktop computers lack built-in GPS chips, so they estimate your location using your Wi-Fi or IP address. For pinpoint accuracy (5m - 10m), open this page on a mobile phone!
+            </div>
+        </div>
+        <div id="map"></div>
+    </div>
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '© OpenStreetMap contributors'
-  }).addTo(map);
+    <!-- IMPORTANT: Replace 'YOUR_API_KEY' with your actual Google Maps API Key -->
+    <script async defer
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAT-yr1BTSKwXaclsyAHJYUHDb21APtYG8&callback=initMap"></script>
 
-  let person1 = { lat: 12.9716, lng: 77.5946 };
-  let person2 = { lat: 12.9730, lng: 77.5955 };
+    <script>
+        let map;
+        let marker;
+        let accuracyCircle;
 
-  const icon1 = L.icon({
-    iconUrl: 'https://cdn-icons-png.flaticon.com/512/149/149071.png',
-    iconSize: [40, 40],
-    iconAnchor: [20, 40],
-    popupAnchor: [0, -40]
-  });
+        // Initialize map centered roughly on the world
+        function initMap() {
+            map = new google.maps.Map(document.getElementById("map"), {
+                center: { lat: 20, lng: 0 },
+                zoom: 2,
+                mapTypeControl: false,
+                streetViewControl: false,
+                styles: [ // Optional: Add a custom style to make it look premium
+                    {
+                        "featureType": "poi",
+                        "elementType": "labels.text.fill",
+                        "stylers": [{ "color": "#747474" }, { "lightness": "23" }]
+                    },
+                    {
+                        "featureType": "poi.attraction",
+                        "elementType": "geometry.fill",
+                        "stylers": [{ "color": "#f38eb0" }]
+                    },
+                    {
+                        "featureType": "poi.government",
+                        "elementType": "geometry.fill",
+                        "stylers": [{ "color": "#ced7db" }]
+                    },
+                    {
+                        "featureType": "poi.medical",
+                        "elementType": "geometry.fill",
+                        "stylers": [{ "color": "#ffa5a8" }]
+                    },
+                    {
+                        "featureType": "poi.park",
+                        "elementType": "geometry.fill",
+                        "stylers": [{ "color": "#c7e5c8" }]
+                    },
+                    {
+                        "featureType": "poi.place_of_worship",
+                        "elementType": "geometry.fill",
+                        "stylers": [{ "color": "#d6cbc7" }]
+                    },
+                    {
+                        "featureType": "poi.school",
+                        "elementType": "geometry.fill",
+                        "stylers": [{ "color": "#c4c9e8" }]
+                    },
+                    {
+                        "featureType": "poi.sports_complex",
+                        "elementType": "geometry.fill",
+                        "stylers": [{ "color": "#b1eaf1" }]
+                    }
+                ]
+            });
+        }
 
-  const icon2 = L.icon({
-    iconUrl: 'https://cdn-icons-png.flaticon.com/512/4140/4140048.png',
-    iconSize: [40, 40],
-    iconAnchor: [20, 40],
-    popupAnchor: [0, -40]
-  });
+        const btn = document.getElementById('find-me-btn');
+        const btnText = document.getElementById('btn-text');
+        const spinner = document.getElementById('loading-spinner');
+        const statusMsg = document.getElementById('status-msg');
+        const btnIcon = btn.querySelector('svg');
 
-  const marker1 = L.marker([person1.lat, person1.lng], { icon: icon1, title: "Person 1" }).addTo(map);
-  const circle1 = L.circle([person1.lat, person1.lng], {
-    radius: 10,
-    color: 'blue',
-    fillColor: 'blue',
-    fillOpacity: 0.3
-  }).addTo(map);
+        btn.addEventListener('click', () => {
+            if (!navigator.geolocation) {
+                showError('Geolocation is not supported by your browser.');
+                return;
+            }
 
-  const marker2 = L.marker([person2.lat, person2.lng], { icon: icon2, title: "Person 2" }).addTo(map);
-  const circle2 = L.circle([person2.lat, person2.lng], {
-    radius: 10,
-    color: 'red',
-    fillColor: 'red',
-    fillOpacity: 0.3
-  }).addTo(map);
+            // Set loading state
+            btn.style.pointerEvents = 'none';
+            btnText.style.display = 'none';
+            btnIcon.style.display = 'none';
+            spinner.style.display = 'block';
+            statusMsg.textContent = 'Acquiring GPS coordinates...';
+            statusMsg.style.color = 'var(--text-muted)';
 
-  let rideInterval;
-  let path1 = [ [person1.lat, person1.lng] ];
-  let path2 = [ [person2.lat, person2.lng] ];
-  let polyline1, polyline2;
-  let totalDistance1 = 0;
-  let totalDistance2 = 0;
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    const accuracy = position.coords.accuracy;
+                    const pos = { lat: lat, lng: lng };
 
-  function interpolate(start, end, t) {
-    return start + (end - start) * t;
-  }
+                    // Reset button state
+                    btn.style.pointerEvents = 'auto';
+                    btnText.style.display = 'block';
+                    btnIcon.style.display = 'block';
+                    spinner.style.display = 'none';
 
-  function animateMovement(marker, circle, startPos, endPos, duration = 1000) {
-    const startTime = performance.now();
-    function animate(currentTime) {
-      const elapsed = currentTime - startTime;
-      const t = Math.min(elapsed / duration, 1);
-      const lat = interpolate(startPos.lat, endPos.lat, t);
-      const lng = interpolate(startPos.lng, endPos.lng, t);
-      marker.setLatLng([lat, lng]);
-      circle.setLatLng([lat, lng]);
-      if (t < 1) requestAnimationFrame(animate);
-    }
-    requestAnimationFrame(animate);
-  }
+                    statusMsg.innerHTML = `Location successfully found! <span style="opacity: 0.7; font-size: 12px; margin-left: 5px;">(Accuracy: ${Math.round(accuracy)}m)</span>`;
+                    statusMsg.style.color = '#10B981'; // Green
 
-  function getNextPosition(pos, latStep, lngStep) {
-    return {
-      lat: pos.lat + latStep,
-      lng: pos.lng + lngStep
-    };
-  }
+                    // Ensure map is initialized (in case API key is missing, this handles gracefully)
+                    if (!map) {
+                        showError("Google Maps failed to load. Please check your API key.");
+                        return;
+                    }
 
-  function calculateDistance(latlng1, latlng2) {
-    return map.distance(latlng1, latlng2); // meters
-  }
+                    // Remove existing marker/circle if they exist
+                    if (marker) marker.setMap(null);
+                    if (accuracyCircle) accuracyCircle.setMap(null);
 
-  document.getElementById('startRide').onclick = () => {
-    if (rideInterval) return; // prevent double start
-    rideInterval = setInterval(() => {
-      const newPos1 = getNextPosition(person1, 0.0001, 0.00005);
-      const newPos2 = getNextPosition(person2, -0.00005, 0.0001);
+                    // Add new marker
+                    marker = new google.maps.Marker({
+                        position: pos,
+                        map: map,
+                        animation: google.maps.Animation.DROP,
+                        title: "You are here!"
+                    });
 
-      // Distance calculation
-      const dist1 = calculateDistance([person1.lat, person1.lng], [newPos1.lat, newPos1.lng]);
-      const dist2 = calculateDistance([person2.lat, person2.lng], [newPos2.lat, newPos2.lng]);
-      totalDistance1 += dist1;
-      totalDistance2 += dist2;
+                    // Add accuracy circle
+                    accuracyCircle = new google.maps.Circle({
+                        strokeColor: "#4F46E5",
+                        strokeOpacity: 0.8,
+                        strokeWeight: 2,
+                        fillColor: "#4F46E5",
+                        fillOpacity: 0.15,
+                        map: map,
+                        center: pos,
+                        radius: accuracy,
+                    });
 
-      // Path
-      path1.push([newPos1.lat, newPos1.lng]);
-      path2.push([newPos2.lat, newPos2.lng]);
+                    // Smoothly animate to the new location
+                    map.panTo(pos);
+                    map.setZoom(16);
 
-      animateMovement(marker1, circle1, person1, newPos1);
-      animateMovement(marker2, circle2, person2, newPos2);
+                    // Add popup to marker
+                    const infowindow = new google.maps.InfoWindow({
+                        content: "<div style='font-family: Inter, sans-serif; font-size: 14px; font-weight: 500; color: #111827'>📍 <b>You are right here!</b></div>",
+                    });
 
-      person1 = newPos1;
-      person2 = newPos2;
+                    setTimeout(() => {
+                        infowindow.open(map, marker);
+                    }, 500);
+                },
+                (error) => {
+                    // Reset button state
+                    btn.style.pointerEvents = 'auto';
+                    btnText.style.display = 'block';
+                    btnIcon.style.display = 'block';
+                    spinner.style.display = 'none';
 
-      // Draw path lines
-      if (polyline1) map.removeLayer(polyline1);
-      if (polyline2) map.removeLayer(polyline2);
-      polyline1 = L.polyline(path1, { color: 'blue' }).addTo(map);
-      polyline2 = L.polyline(path2, { color: 'red' }).addTo(map);
-    }, 1000);
-  };
+                    switch (error.code) {
+                        case error.PERMISSION_DENIED:
+                            showError("Location access denied. Please enable permissions in your browser.");
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            showError("Location information is currently unavailable.");
+                            break;
+                        case error.TIMEOUT:
+                            showError("The request to get your location timed out.");
+                            break;
+                        case error.UNKNOWN_ERROR:
+                            showError("An unknown error occurred while trying to find you.");
+                            break;
+                    }
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                }
+            );
+        });
 
-  document.getElementById('stopRide').onclick = () => {
-    clearInterval(rideInterval);
-    rideInterval = null;
-    alert(`Person 1 traveled ${totalDistance1.toFixed(2)} meters.\nPerson 2 traveled ${totalDistance2.toFixed(2)} meters.`);
-  };
-</script>
-
+        function showError(msg) {
+            statusMsg.textContent = msg;
+            statusMsg.style.color = '#EF4444'; // Red
+        }
+    </script>
 </body>
+
 </html>
